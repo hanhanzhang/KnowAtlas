@@ -10,19 +10,13 @@ updated: 2026-10-29
 # Go 语言、工程实践与运行时
 
 > **读者**：有 C/Java/Python 基础，或已能写 Go 但想弄清"为什么这样写、运行时到底做了什么"。
-> **结构**：第零部分给出版本基线；第一部分讲语言内核（1–11 章）；第二部分讲工程实践（12–19 章）；第三部分深挖 runtime（20–26 章）；附录 A–E 是速查与延伸阅读。
-> **约定**：⚠️ 易错点｜💡 惯用法｜🧭 工程建议。示例默认 `go 1.27`，凡是需要更高版本或更低版本才成立的写法都会标注。
+> **结构**：第一部分讲语言内核（1–11 章）；第二部分讲工程实践（12–19 章）；第三部分深挖 runtime（20–26 章）；附录 A–E 是速查与延伸阅读。
+> **版本**：正文以 Go 1.27（2026-08）为基线；1.22–1.27 之间的语义变化会在正文中标注首次生效版本。
+> **约定**：⚠️ 易错点｜💡 惯用法｜🧭 工程建议。短片段省略 `package`/`import` 时默认在 `main` 包。
 
 ---
 
 ## 目录
-
-**第零部分　版本基线与阅读指南**
-- [0. 版本基线](#0-版本基线)
-  - [0.1 Go 的版本、兼容承诺与本文基线](#01-go-的版本兼容承诺与本文基线)
-  - [0.2 特性 → 最低版本](#02-特性--最低版本)
-  - [0.3 `go` 指令、`toolchain` 与 `GODEBUG`](#03-go-指令toolchain-与-godebug)
-  - [0.4 本文示例的约定](#04-本文示例的约定)
 
 **第一部分　语言内核**
 - [1. 工具链与第一个模块](#1-工具链与第一个模块)
@@ -237,98 +231,6 @@ updated: 2026-10-29
 
 ---
 
-# 第零部分　版本基线与阅读指南
-
-## 0. 版本基线
-
-### 0.1 Go 的版本、兼容承诺与本文基线
-
-Go 每半年发一个大版本（2 月、8 月），版本号形如 `1.27`。与 Rust 的 edition 不同，**Go 没有"方言版本"**，只有一个语言规范；差异体现在标准库 API、编译器行为与运行时默认值上。
-
-Go 1 兼容承诺的含义：**已经发布的程序不会被新版本破坏**。允许变化的三类情况：
-
-1. 安全修复（可能改变可见行为）；
-2. 规范未定义的行为（如 map 遍历顺序）；
-3. 通过 `GODEBUG` 提供过渡开关的行为变化——老代码保持老行为，新 `go` 指令的模块用新行为。
-
-⚠️ 这条承诺**不覆盖** `internal/`、`runtime` 的内部细节和未文档化的行为。依赖它们等于把版本升级变成赌博。
-
-本文基线：**Go 1.27**（2026-08）。凡是 1.22–1.27 之间引入的语义变化，会在正文中标注首次生效版本。
-
-### 0.2 特性 → 最低版本
-
-记不清"这个写法能不能用"时查这张表：
-
-| 特性 | 最低版本 | 备注 |
-|---|---|---|
-| module（`go.mod`） | 1.11（1.13 起默认） | 取代 GOPATH 模式 |
-| `go work` 工作区、`go test -fuzz` | 1.18 | 多模块联调、原生模糊测试 |
-| 泛型（类型参数）、`any` | 1.18 | 约束用接口表达 |
-| `atomic.Int64` 等原子类型 | 1.19 | 替代 `atomic.AddInt64(&x, 1)` |
-| `GOMEMLIMIT` / `debug.SetMemoryLimit` | 1.19 | 软内存上限，配合 GOGC 使用 |
-| `errors.Join`、`context.WithCancelCause` | 1.20 | 多错误合并、带原因取消 |
-| `unsafe.String` / `unsafe.Slice` | 1.20 | 减少 `[]byte`↔`string` 拷贝 |
-| `min`/`max`/`clear` 内建函数 | 1.21 | 泛型友好的内建 |
-| `slices`/`maps`/`cmp` 标准库 | 1.21 | 不再需要 `golang.org/x/exp` |
-| `log/slog` | 1.21 | 结构化日志 |
-| PGO（`default.pgo`） | 1.21 | 1.20 起预览，1.21 GA |
-| **循环变量按次迭代** | 1.22 | `go` 指令 ≥1.22 的模块默认生效 |
-| `for range 10`（range over int） | 1.22 | 省掉 `for i := 0; i < 10; i++` |
-| `math/rand/v2` | 1.22 | 新 API，旧包仍可用 |
-| ServeMux 方法与通配符模式 | 1.22 | `"GET /users/{id}"` |
-| range-over-func、`iter` 包 | 1.23 | 自定义迭代器 |
-| `unique` 包（值驻留） | 1.23 | 适合高重复字符串/小对象 |
-| `time.Timer` 通道改为同步 | 1.23 | 1.27 起 `asynctimerchan` 开关已删除 |
-| `tool` 指令（`go tool` 管理工具依赖） | 1.24 | `go get -tool`、`go tool <name>` |
-| `os.Root`（限定在目录内的文件操作） | 1.24 | 防路径穿越 |
-| `weak` 包、`runtime.AddCleanup` | 1.24 | 弱引用、替代 `SetFinalizer` |
-| `crypto/mlkem`、`crypto/hkdf`、`crypto/pbkdf2`、`crypto/sha3` | 1.24 | 后量子与常用 KDF |
-| 泛型类型别名 | 1.24 | `type Set[T comparable] = map[T]struct{}` |
-| `testing/synctest` 稳定 | 1.25 | 虚拟时钟测并发 |
-| `sync.WaitGroup.Go` | 1.25 | 少写一个 goroutine 闭包 |
-| `GOMAXPROCS` 感知 cgroup CPU 限额 | 1.25 | 容器里不再默认拿满宿主核数 |
-| `http.CrossOriginProtection` | 1.25 | 内置 CSRF 防护 |
-| goroutine 泄漏 profile（实验） | 1.26 | 1.27 转正 |
-| `simd/archsimd`（实验） | 1.26 | 需 `GOEXPERIMENT=simd` |
-| **泛型方法** | 1.27 | 方法可声明自己的类型参数 |
-| `encoding/json/v2`、`encoding/json/jsontext` | 1.27 | 严格默认值，v1 由 v2 实现 |
-| `crypto/mldsa`（FIPS 204） | 1.27 | 后量子签名 |
-| `uuid` 标准库包 | 1.27 | 生成/解析 UUID |
-| `simd` 可移植 SIMD（实验） | 1.27 | 需 `GOEXPERIMENT=simd` |
-| `go test` 默认执行 `stdversion` vet | 1.27 | 用了高于 `go` 指令的标准库符号会报错 |
-| goroutine leak profile GA | 1.27 | `/debug/pprof/goroutineleak` |
-
-⚠️ 未定稿的特性（如自定义分配器、`simd` 稳定版）不要写进主线代码；看到博客里的写法先确认是否 `GOEXPERIMENT`。
-
-### 0.3 `go` 指令、`toolchain` 与 `GODEBUG`
-
-`go.mod` 的前两行决定了"用哪个版本的语言语义、用哪个工具链"：
-
-```go
-module example.com/app
-
-go 1.27          // 语言与标准库语义版本，也是 loop var 等行为的开关
-toolchain go1.27.3   // 建议使用的最低工具链（可选）
-```
-
-- **`go` 指令是语义开关**，不是"随便写的老版本"：写 `go 1.21` 就保留旧的循环变量语义，即使你用 1.27 编译。
-- `toolchain` 指令让 `go` 命令在版本不足时自动下载指定工具链；CI 里可用 `GOTOOLCHAIN=local` 禁止自动下载。
-- `GODEBUG` 是运行时的行为开关，格式 `GODEBUG=name=value,name2=value2`；也可以写进 `go.mod` 的 `godebug` 段或源码的 `//go:debug` 注释，保证不依赖部署环境。
-
-```go
-//go:debug httplaxcontentlength=1
-package main
-```
-
-### 0.4 本文示例的约定
-
-- 示例都是完整可编译片段（除标注"伪代码"外），省略 `package`/`import` 时假定在 `main` 包。
-- "分配"指堆分配；栈分配不计入 GC 压力。
-- "并发"指逻辑上的同时进行（goroutine），"并行"指同时执行（多核）。
-- 提到 runtime 行为时，以 Go 1.27 的 `src/runtime` 为准，并注明实现细节可能变化。
-
----
-
 # 第一部分　语言内核
 
 ## 1. 工具链与第一个模块
@@ -450,6 +352,8 @@ go build -n ./... | head
 | `GODEBUG` | 运行时行为开关，如 `gctrace=1`、`inittrace=1`、`http2debug=1` |
 | `GOTRACEBACK` | panic 时打印的栈级别（`none`/`single`/`all`/`system`/`crash`） |
 | `GOTOOLCHAIN` | `auto`（默认）/`local`/`go1.27.0` |
+
+`go.mod` 里的 `go` 指令是**语义开关**（例如 1.22 的循环变量语义），不只是"最低版本要求"；`toolchain` 指定建议工具链，CI 里可用 `GOTOOLCHAIN=local` 禁止自动下载。`GODEBUG` 也可以写进 `go.mod` 的 `godebug` 段或源码的 `//go:debug` 注释，避免依赖部署环境。
 
 🧭 生产容器里至少设置 `GOMEMLIMIT`（略低于容器上限），否则 GC 不知道 cgroup 边界，容易 OOMKilled。
 
