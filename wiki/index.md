@@ -24,7 +24,8 @@
 | 页面 | 一句话 | 章节重点 | 类型 |
 |---|---|---|---|
 | [typescript.md](tech/languages/typescript.md) | 从 TS 类型系统到 Node 运行时、包管理与 Electron 的通用工程参考，不绑定具体项目 | 类型系统 / 事件循环 / pnpm / monorepo / Electron | deep-dive |
-| [rust.md](tech/languages/rust.md) | Rust 语法体系，全部示例取自 codex-rs 真实代码并标注文件行号 | 所有权与借用 / trait 与泛型 / 异步 / 宏 / serde / 编译错误速查 | deep-dive |
+| [rust.md](tech/languages/rust.md) | Rust 语言内核 + 工程实践：从所有权限位到 Cargo、测试、CI 与发布 | 所有权与生命周期 / trait 与泛型 / 闭包与迭代器 / 异步 / Cargo 工程化 / 测试体系 / API 设计 / 性能 | deep-dive |
+| [go.md](tech/languages/go.md) | Go 语言内核 + 工程实践 + runtime 深挖：从切片/接口/泛型到 GMP、分配器、GC 与诊断 | 切片与 map / 接口与泛型 / goroutine 与 channel / 模块与测试 / GMP 调度 / 内存分配 / GC / pprof | deep-dive |
 
 ### Agent Harness · `tech/agent-harness/`
 
@@ -49,7 +50,8 @@
 
 ## 交叉主题
 
-- **语言 ↔ 实现**：`tech/languages/rust.md` 的示例全部来自 `tech/agent-harness/codex-harness.md` 所分析的同一仓库（codex-rs），建议对照阅读——前者讲语法，后者讲这些语法为什么这样用。
+- **语言 ↔ 实现**：`tech/languages/rust.md` 讲语言规则与工程做法，`tech/agent-harness/codex-harness.md` 是这些规则在大型 Rust 工程里的实现案例，建议对照阅读（语言页示例已全部自包含，不再依赖具体项目）。
+- **Rust ↔ Go**：`tech/languages/rust.md` 与 `tech/languages/go.md` 结构对齐（语言内核 / 工程实践），可横向对照所有权 vs GC、trait vs 接口、`Result` vs `error`、async runtime vs GMP 调度；Go 页额外深挖 runtime。
 - **同类系统对比**：`codex-harness` 与 `deepseek-harness` 同为 agent harness。Codex 是 Rust 单体 + 统一协议，DeepSeek 是 TypeScript 全插件化 + 日志即 API，可从「控制循环 / steering / 工具审批」三条线横向比较。
 - **部署视角**：`tech/data-infra/fluss.md` §13 部署与运维 ↔ `tech/cloud-native/kubernetes.md` 第八章节点管理。
 
