@@ -24,7 +24,7 @@
 | 页面 | 一句话 | 章节重点 | 类型 |
 |---|---|---|---|
 | [typescript.md](tech/languages/typescript.md) | 从 TS 类型系统到 Node 运行时、包管理与 Electron 的通用工程参考，不绑定具体项目 | 类型系统 / 事件循环 / pnpm / monorepo / Electron | deep-dive |
-| [rust.md](tech/languages/rust.md) | Rust 语言内核 + 工程实践：从所有权限位到 Cargo、测试、CI 与发布 | 所有权与生命周期 / trait 与泛型 / 闭包与迭代器 / 异步 / Cargo 工程化 / 测试体系 / API 设计 / 性能 | deep-dive |
+| [rust.md](tech/languages/rust.md) | Rust 语言内核 + 工程实践：从所有权限位到 Cargo、测试、CI 与发布 | 术语前置 / 所有权与生命周期 / trait 与泛型 / 闭包与迭代器 / 异步 / Cargo 工程化 / 测试体系 / API 设计 / 性能 | deep-dive |
 | [go.md](tech/languages/go.md) | Go 语言内核 + 工程实践 + runtime 深挖：从切片/接口/泛型到 GMP、分配器、GC 与诊断 | 切片与 map / 接口与泛型 / goroutine 与 channel / 模块与测试 / GMP 调度 / 内存分配 / GC / pprof | deep-dive |
 
 ### Agent Harness · `tech/agent-harness/`

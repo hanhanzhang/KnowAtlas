@@ -10,7 +10,7 @@ updated: 2026-10-29
 # Rust 语言与工程实践
 
 > **读者**：希望系统掌握 Rust 的语言规则与工程做法。
-> **结构**：第一部分讲语言内核（1–13 章）；第二部分讲工程实践（14–20 章）；附录 A–E 是速查与延伸阅读。
+> **结构**：第一部分讲语言内核（0–13 章，第 0 章为术语前置，可先读可回查）；第二部分讲工程实践（14–20 章）；附录 A–E 是速查与延伸阅读。
 > **版本**：正文以 Rust 1.99（2026-10，edition 2024）为基线，只使用稳定特性；未稳定项（`gen` 块、`generic_const_exprs`、specialization）会单独标注。
 > **约定**：⚠️ 易错点｜💡 惯用法｜🧭 工程建议。
 
@@ -19,6 +19,12 @@ updated: 2026-10-29
 ## 目录
 
 **第一部分　语言内核**
+- [0. 读前须知：术语与心智模型](#0-读前须知术语与心智模型)
+  - [0.1 工具链：rustup、toolchain、cargo 各管什么](#01-工具链rustuptoolchaincargo-各管什么)
+  - [0.2 代码组织：package、crate、module、workspace](#02-代码组织packagecratemoduleworkspace)
+  - [0.3 语言侧最小词表](#03-语言侧最小词表)
+  - [0.4 并发与异步词表](#04-并发与异步词表)
+  - [0.5 底层、宏与发布词表](#05-底层宏与发布词表)
 - [1. 工具链与第一个 crate](#1-工具链与第一个-crate)
   - [1.1 rustup 与工具链](#11-rustup-与工具链)
   - [1.2 `cargo new` 之后的目录](#12-cargo-new-之后的目录)
@@ -181,9 +187,114 @@ updated: 2026-10-29
 
 # 第一部分　语言内核
 
+## 0. 读前须知：术语与心智模型
+
+> 这一节不讲语法，只把后文反复出现、初学者最容易卡住的词一次说清。
+> 读法建议：先扫一眼表格，不必背；卡住时回来查。按字母或按章速查见[附录 E](#附录-e术语表)。
+
+Rust 的术语密度高，原因是它把**工具链、代码组织、类型系统**三层概念分得很细，而这三层在别的语言里常被同一个词糊在一起（比如 Java 的 "project"、JS 的 "package"）。先把每层各管什么分开，后面所有章节都会顺很多。
+
+### 0.1 工具链：rustup、toolchain、cargo 各管什么
+
+这几个词几乎总是一起出现，但职责完全不同：
+
+```text
+rustup                 安装、切换、更新 toolchain（它本身不编译任何代码）
+  └─ toolchain         一整套同版本的东西：rustc + cargo + 标准库 + 组件
+       ├─ rustc        编译器本体：一次编译一个 crate
+       └─ cargo        构建工具 / 包管理器：读 Cargo.toml、解析依赖、调用 rustc
+```
+
+| 词 | 一句话 | 常见误解 |
+|---|---|---|
+| **toolchain（工具链）** | 一套同版本的编译器 + 标准库 + 配套工具，如 `1.85.0-x86_64-apple-darwin` | 不是某个库，也不是 cargo 的别名 |
+| **rustup** | 管理 toolchain 的命令行工具 | 它不编译代码；只负责"装、切、补组件" |
+| **rustc** | 真正的编译器：输入 `.rs`，输出 `.rlib` 或可执行文件 | 日常不必直接调用，cargo 会替你调 |
+| **cargo** | 构建、依赖、测试、发布的总入口 | 它不是编译器，编译仍由 rustc 完成 |
+| **component（组件）** | toolchain 内可单独装卸的工具：`clippy`、`rustfmt`、`rust-analyzer`、`miri` | 报 "no such command: clippy" 时用 `rustup component add` 补装 |
+| **edition（版次）** | 语法规则的批次：2015 / 2018 / 2021 / 2024 | 不是 Rust 版本；**同一个 rustc 支持所有 edition**，能用的特性由 rustc 版本决定 |
+| **`target/`** | 构建产物目录（可执行文件、中间文件、缓存） | 它永远不提交；只有源码和 `Cargo.toml`/`Cargo.lock` 进 Git |
+
+🧭 一句话记忆：**rustup 装工具链；toolchain 提供 rustc 和 cargo；cargo 组织项目并调用 rustc 编译 crate。**
+
+### 0.2 代码组织：package、crate、module、workspace
+
+这是 Rust 独有、也最容易被张冠李戴的一组词：
+
+```text
+workspace              一个仓库里的多个 package，共享 target/ 与 Cargo.lock
+  └─ package           一个 Cargo.toml = 一个发布单元（可发布到 crates.io）
+       ├─ lib crate    src/lib.rs，供别人 use；产物是 .rlib
+       │    └─ module  crate 内部用 mod 划分的命名空间（bin crate 同样有）
+       └─ bin crate    src/main.rs 或 src/bin/*.rs；产物是可执行文件
+```
+
+| 词 | 一句话 | 怎么认 |
+|---|---|---|
+| **package** | 一个 `Cargo.toml` 描述的包：有名字、版本、依赖 | 看目录里有没有 `Cargo.toml` |
+| **crate** | 一次编译单元，Rust 的"最小可编译整体" | 一个 `lib.rs` 或一个 `main.rs` 就是一个 crate |
+| **module** | crate 内的命名空间，决定 `use` 路径与可见性 | 由 `mod`、文件、目录组织 |
+| **workspace** | 多个 package 的集合，共享锁文件与构建缓存 | 根 `Cargo.toml` 里有 `[workspace]` |
+
+⚠️ 三个常见混淆：
+
+- **"crate 就是包"只对了一半**：一个 package 可以产出多个 crate（一个 lib + 多个 bin），`cargo new` 默认建的是一个 package。
+- **`use serde::...` 里的 `serde` 是 crate 名，不是 package 名**：两者通常同名，但 package 用连字符、crate 用下划线（`my-app` → `my_app`，见 [§1.2](#12-cargo-new-之后的目录)）。
+- **module 不是 crate**：`mod foo;` 只是拆文件，不会产生新的编译单元，也不会进 `Cargo.toml`。
+
+### 0.3 语言侧最小词表
+
+| 词 | 一句话 | 类比 |
+|---|---|---|
+| **所有权（ownership）** | 每个值有唯一负责人；负责人离开作用域，值被释放 | 一本书只有一个持有人，人走书还 |
+| **借用（borrow）** | 用 `&T` / `&mut T` 临时"看"或"改"，不取得所有权 | 借书证：能读，但不拥有 |
+| **生命周期（lifetime）** | 引用有效的时间区间，用 `'a` 标注；编译器据此证明不会悬垂 | 借书期限 |
+| **move / Copy** | 赋值默认转移所有权；`Copy` 类型（整数、`bool` 等）按位复制 | 原件转交 vs 复印一份 |
+| **trait** | 一组行为约定，可带默认实现、关联类型，可为外部类型实现 | 类似 Java 接口，但能力更强、更"零成本" |
+| **泛型（generic）** | 一份代码适配多种类型，编译期为每个具体类型生成专门代码 | 模板，但类型检查发生在使用处 |
+| **单态化（monomorphization）** | 泛型展开成具体类型代码的过程 | 模板盖章，一个类型一份 |
+| **`dyn Trait`（trait 对象）** | 运行期通过虚表调用，可把不同类型放进同一容器 | 统一插座，插什么用什么 |
+| **对象安全（object safety）** | 一个 trait 能否作为 `dyn Trait` 使用的条件 | 插座规格是否标准 |
+| **RAII** | 资源绑定对象生命周期，`Drop` 自动释放 | 退房自动结账 |
+| **内部可变性** | 持有共享引用时也能改值（`Cell`/`RefCell`/`Mutex`） | 上锁的抽屉 |
+
+这些概念的规则细节分别在[第 4 章](#4-所有权借用与生命周期)和[第 5 章](#5-结构体枚举trait-与泛型)；这里只需要先建立"谁拥有、谁能改、活多久"三个问题。
+
+### 0.4 并发与异步词表
+
+| 词 | 一句话 | 关键点 |
+|---|---|---|
+| **线程（thread）** | 操作系统调度的执行单元，栈独立 | `std::thread`；共享数据要 `Arc<Mutex<_>>` 或 channel |
+| **`Send` / `Sync`** | 能否跨线程**转移** / 能否被**共享引用** | 编译器自动推导的标记 trait，不是手动实现的行为 |
+| **`Future`** | 一个可被轮询的状态机，描述"将来会完成的计算" | **本身不会运行**，只是值 |
+| **executor（执行器）** | 循环 `poll` 一批 `Future` 直到完成的调度器 | `block_on`、tokio 的 worker 都是执行器 |
+| **runtime（运行时）** | 执行器 + IO/定时器驱动（reactor）的集合 | `tokio`、`async-std`；标准库只提供 `Future`，不提供 runtime |
+| **背压（backpressure）** | 消费端限速生产端，防止内存被撑爆 | 用有界 channel / 有界队列 |
+| **取消安全（cancel safety）** | `Future` 被 drop 时不留下"半截副作用"的性质 | `select!` 与超时的正确性前提 |
+
+⚠️ 最常见的误解：`async fn` 调用后**什么也没发生**，必须 `.await` 或被 spawn 才会推进；"async 就是多线程"也不对，单线程 runtime 一样能跑。
+
+### 0.5 底层、宏与发布词表
+
+| 词 | 一句话 | 关键点 |
+|---|---|---|
+| **`unsafe`** | 把编译器无法检查的义务交给程序员 | `unsafe` 不自动等于 UB，但**违反安全前提就是 UB** |
+| **UB（未定义行为）** | 编译器假设永不发生的情况，发生则整个程序无意义 | 悬垂指针、数据竞争、越界读 |
+| **FFI** | 与其他语言（C/C++ 等）互相调用 | 需要 `extern "C"` + `#[repr(C)]` 固定布局 |
+| **`repr`** | 控制类型的内存布局 | `repr(C)` 给 FFI，`repr(transparent)` 给 newtype |
+| **宏（macro）** | 编译期展开的代码生成器 | `macro_rules!` 是模式匹配；proc-macro 是运行在编译期的 Rust 程序 |
+| **hygiene（卫生性）** | 宏内引入的名字不会意外撞上调用处的名字 | 宏调试困难的主因之一 |
+| **feature flag** | Cargo 的可选编译开关，控制依赖与代码裁剪 | 设计原则：**只做加法**，任组合都应能编译 |
+| **MSRV** | 最低支持的 Rust 版本 | 写进 `Cargo.toml` 的 `rust-version`，CI 单独测 |
+| **semver** | 语义化版本：`MAJOR.MINOR.PATCH` | `0.x` 视为不稳定；破坏性变更必须升 `MAJOR` |
+
+---
+
 ## 1. 工具链与第一个 crate
 
 ### 1.1 rustup 与工具链
+
+`rustup` 管的是 **toolchain（工具链）**，不是代码；`toolchain` 又是"一整套同版本的 rustc + cargo + 标准库 + 组件"。两者关系见 [§0.1](#01-工具链rustuptoolchaincargo-各管什么)，忘了随时回查。
 
 ```bash
 rustup show                        # 当前目录生效的工具链与组件
@@ -216,7 +327,7 @@ demo/
     └── main.rs       # lib 则是 lib.rs
 ```
 
-- **package**：一个 `Cargo.toml` 描述的发布单元；**crate**：一次编译单元。
+- **package**：一个 `Cargo.toml` 描述的发布单元；**crate**：一次编译单元（两者区别与 module、workspace 的关系见 [§0.2](#02-代码组织packagecratemoduleworkspace)）。
 - package 名习惯用连字符（`my-app`），编译出的 crate 名把连字符换成下划线（`my_app`），`use my_app::...` 才是对的。
 
 🧭 约定：`src/lib.rs` 只做三件事——声明模块、定义 crate 级属性、re-export 公共 API；实现细节留在子模块。
@@ -2809,17 +2920,36 @@ async fn main() -> anyhow::Result<()> {
 
 ## 附录 E　术语表
 
+基础工程词（toolchain / crate / package / module / workspace…）的展开解释见 [§0](#0-读前须知术语与心智模型)；本表只做一句话速查。
+
 | 术语 | 含义 |
 |---|---|
+| **toolchain（工具链）** | 一整套同版本的 rustc + cargo + 标准库 + 组件 |
+| **rustup** | 安装、切换 toolchain 与组件的工具，本身不编译代码 |
+| **rustc** | 编译器本体，一次编译一个 crate |
+| **cargo** | 构建与依赖管理入口，负责调用 rustc |
+| **crate** | 一次编译单元：一个 `lib.rs` 或 `main.rs` |
+| **package** | 一个 `Cargo.toml` 描述的发布单元，可包含多个 crate |
+| **module** | crate 内用 `mod` 划分的命名空间 |
+| **workspace** | 多个 package 的集合，共享 `target/` 与 `Cargo.lock` |
+| **edition（版次）** | 语法规则的批次（2015/2018/2021/2024），同一 rustc 全部支持 |
+| **component** | toolchain 内可单独装卸的工具（clippy、rustfmt 等） |
+| **feature flag** | Cargo 的可选编译开关；设计上只做加法 |
 | **所有权（ownership）** | 每个值有唯一所有者，所有者离开作用域时释放 |
 | **借用（borrow）** | 通过 `&T`/`&mut T` 临时访问而不取得所有权 |
 | **生命周期（lifetime）** | 引用有效性的区间，用 `'a` 标注 |
 | **NLL** | 非词法生命周期，借用结束于最后一次使用 |
+| **trait** | 一组行为约定，可带默认实现、关联类型，可为外部类型实现 |
 | **单态化（monomorphization）** | 为每个泛型实例生成专门代码 |
 | **对象安全（object safety）** | 一个 trait 能否作为 `dyn Trait` 使用 |
 | **RPIT / RPITIT** | 返回位置 `impl Trait` / trait 方法中的返回位置 `impl Trait` |
 | **NPO（niche optimization）** | 利用非法值位模式把 `Option<T>` 压成同尺寸 |
 | **RAII** | 资源获取即初始化，靠 `Drop` 自动释放 |
+| **FFI** | 与其他语言互相调用，需 `extern "C"` 与 `repr(C)` |
+| **UB（未定义行为）** | 编译器假设不会发生的情况；`unsafe` 代码违反安全前提即触发 |
+| **hygiene（卫生性）** | 宏引入的名字不会与调用处冲突的性质 |
+| **executor（执行器）** | 循环轮询 `Future` 的调度器 |
+| **runtime（运行时）** | 执行器 + IO/定时器驱动的集合（tokio 等） |
 | **cancel safety** | future 被 drop 时不留副作用的性质 |
 | **背压（backpressure）** | 消费端限速生产端的机制（有界队列） |
 | **MSRV** | 最低支持 Rust 版本 |
