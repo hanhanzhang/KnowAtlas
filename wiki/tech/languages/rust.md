@@ -10,18 +10,13 @@ updated: 2026-10-29
 # Rust 语言与工程实践
 
 > **读者**：希望系统掌握 Rust 的语言规则与工程做法。
-> **结构**：第零部分给出版本基线；第一部分讲语言内核（1–13 章）；第二部分讲工程实践（14–20 章）；附录 A–E 是速查与延伸阅读。
+> **结构**：第一部分讲语言内核（1–13 章）；第二部分讲工程实践（14–20 章）；附录 A–E 是速查与延伸阅读。
+> **版本**：正文以 Rust 1.99（2026-10，edition 2024）为基线，只使用稳定特性；未稳定项（`gen` 块、`generic_const_exprs`、specialization）会单独标注。
 > **约定**：⚠️ 易错点｜💡 惯用法｜🧭 工程建议。
 
 ---
 
 ## 目录
-
-**第零部分　版本基线与阅读指南**
-- [0. 版本基线](#0-版本基线)
-  - [0.1 三个容易混淆的版本概念](#01-三个容易混淆的版本概念)
-  - [0.2 特性 → 最低版本](#02-特性--最低版本)
-  - [0.3 MSRV 策略](#03-msrv-策略)
 
 **第一部分　语言内核**
 - [1. 工具链与第一个 crate](#1-工具链与第一个-crate)
@@ -181,59 +176,6 @@ updated: 2026-10-29
 - [附录 C　Code Review 检查清单](#附录-ccode-review-检查清单)
 - [附录 D　延伸阅读](#附录-d延伸阅读)
 - [附录 E　术语表](#附录-e术语表)
-
----
-
-# 第零部分　版本基线与阅读指南
-
-## 0. 版本基线
-
-### 0.1 三个容易混淆的版本概念
-
-| 概念 | 含义 | 在哪里指定 |
-|---|---|---|
-| **工具链版本**（1.99.0 等） | 编译器与标准库的版本，决定"能用哪些特性" | `rust-toolchain.toml`、`rustup override` |
-| **edition**（2015/2018/2021/2024） | 语法与语义的"方言版本"，同一编译器可编译多个 edition | `Cargo.toml` 的 `edition` |
-| **MSRV**（最低支持版本） | 你的 crate 承诺支持的最低工具链 | `Cargo.toml` 的 `rust-version` |
-
-三者独立：`edition = "2024"` 要求编译器 ≥ 1.85；而 `rust-version = "1.75"` 是给下游用户的承诺。
-
-本文基线：**Rust 1.99**（2026-10-01 发布，补丁版 1.99.1）。下表给的是各特性的**首次稳定版本**，不代表只能用在该版本；新代码默认可以全部使用。
-
-### 0.2 特性 → 最低版本
-
-记不清"这个写法能不能用"时查这张表：
-
-| 特性 | 最低版本 | 备注 |
-|---|---|---|
-| `thread::scope`（借用式作用域线程） | 1.63 | 无需 `Arc` 即可跨线程借用 |
-| `let ... else` | 1.65 | 提前退出，替代嵌套 `match` |
-| GAT（泛型关联类型） | 1.65 | `type Item<'a>` |
-| `OnceLock` / `OnceCell` | 1.70 | 替代 `lazy_static!` |
-| Cargo `[lints]` 表、`[workspace.lints]` | 1.74 | 集中配置 lint |
-| RPITIT、trait 内 `async fn` | 1.75 | 免 `#[async_trait]`，但不能 `dyn` |
-| `c"..."` C 字符串字面量 | 1.77 | FFI 传常量字符串 |
-| `LazyLock` | 1.80 | 首次访问初始化 |
-| `#[expect(lint)]` | 1.81 | 比 `#[allow]` 更可审计 |
-| `resolver = "3"` | 1.84 | edition 2024 默认 |
-| edition 2024（含 let-chains、`unsafe extern`、RPIT 捕获规则变更） | 1.85 / 1.88（let-chains） | 迁移见官方 Edition Guide |
-| trait upcasting（`Arc<dyn Sub>` → `Arc<dyn Super>`） | 1.86 | 之前需要手写转发 |
-| C 可变参数函数**定义**（`extern "C" fn f(args: ...)`） | 1.99 | 之前只能调用 C 的可变参数函数 |
-| `size_of_val_raw` / `align_of_val_raw` / `Layout::for_value_raw` | 1.99 | 裸指针 + unsized 类型求布局 |
-| `Vec::into_parts` / `Vec::from_parts` | 1.99 | 拆装 Vec 的原始部件 |
-| `String::from_utf8_lossy_owned` | 1.99 | 宽松解码且复用原缓冲区 |
-
-⚠️ 1.87–1.98 的逐版本变更请查官方 release notes；本表只列"影响正文写法"的里程碑。同样仍未稳定、看到博客要先确认 nightly 的：`gen` 块、`generic_const_exprs`、specialization、自定义分配器。
-
-### 0.3 MSRV 策略
-
-🧭 三种常见策略，选一种并写进 CI：
-
-1. **滚动**：只支持最近 2–3 个版本。适合应用与内部库，维护成本最低。
-2. **固定低水位**：`rust-version` 定在某个 LTS 式版本（如 1.75），CI 跑一个 MSRV job 保证不回退。适合开源库。
-3. **不承诺**：只在 README 写"随 stable 滚动"。代价是下游可能装不上。
-
-关键动作：`Cargo.toml` 写 `rust-version`，CI 用该版本单独跑一次 `cargo check`，否则 MSRV 一定会被无意破坏。
 
 ---
 
