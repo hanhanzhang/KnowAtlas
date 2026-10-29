@@ -4,13 +4,14 @@ domain: tech/languages
 type: deep-dive
 tags: [typescript, nodejs, npm, monorepo, electron]
 source: "自整理通用工程参考，无外部原文（原 knowledge/frontend）"
-updated: 2026-10-16
+updated: 2026-10-29
 ---
 
 # TypeScript 技术文档
 
 > 通用的 TypeScript / Node.js / 包管理 / Electron 工程技术参考。
 > 全文不依赖任何具体项目；示例均为自包含小片段。图表节点使用英文标签以保证渲染对齐。
+> **版本**：正文以 TypeScript 7.0.2（原生编译器）与 Node.js 26 LTS（2026-10）为基线；`TS 5.0`、`TS 5.2+` 之类标注表示该特性的引入版本。
 > 自整理通用工程参考，无外部原文；整理日期 2026-10-16。
 
 ---
