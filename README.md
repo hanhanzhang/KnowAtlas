@@ -36,6 +36,7 @@ KnowAtlas/
 │   └── tech/              # 大类：技术
 │       ├── languages/     #   领域：语言与工程
 │       ├── agent-harness/ #   领域：Agent 运行时
+│       ├── skills/        #   领域：Agent 技能
 │       ├── cloud-native/  #   领域：云原生
 │       └── data-infra/    #   领域：数据基础设施
 └── .claude/

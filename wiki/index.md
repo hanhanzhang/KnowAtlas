@@ -9,7 +9,7 @@
 
 | 大类 | 状态 | 说明 |
 |---|---|---|
-| [`tech/`](tech/) | ✅ 有内容 | 技术：语言与工程、Agent 运行时、云原生、数据基础设施 |
+| [`tech/`](tech/) | ✅ 有内容 | 技术：语言与工程、Agent 运行时、Agent 技能、云原生、数据基础设施 |
 | `law/` | 预留 | 法律：尚未录入 |
 | `finance/` | 预留 | 金融：尚未录入 |
 
@@ -34,6 +34,12 @@
 | [codex-harness.md](tech/agent-harness/codex-harness.md) | 先讲 agent harness 通用原理，再逐层落到 Codex 的控制循环与实现 | agent loop / 统一协议 / steering / 工具系统 / 上下文管理 / multi-agent | deep-dive |
 | [deepseek-harness.md](tech/agent-harness/deepseek-harness.md) | 基于 Cordis 的插件化 Agent 运行时完整拆解 | 插件模型 / profile 组合 / turn 生命周期 / 安全模型 / 设计模式 | deep-dive |
 
+### Agent 技能 · `tech/skills/`
+
+| 页面 | 一句话 | 章节重点 | 类型 |
+|---|---|---|---|
+| [software-dev-skills.md](tech/skills/software-dev-skills.md) | 9 个社区软件开发 skill 仓库的源码级全景：五种形态 + 八种可复用模式 | 形态分类 / 逐库拆解 / 渐进披露 / 门禁分层 / 对抗验证 / 工具兜底 / 调用权 / 适配器 / 治理 | deep-dive |
+
 ### 云原生 · `tech/cloud-native/`
 
 | 页面 | 一句话 | 章节重点 | 类型 |
@@ -53,6 +59,7 @@
 - **语言 ↔ 实现**：`tech/languages/rust.md` 讲语言规则与工程做法，`tech/agent-harness/codex-harness.md` 是这些规则在大型 Rust 工程里的实现案例，建议对照阅读（语言页示例已全部自包含，不再依赖具体项目）。
 - **Rust ↔ Go**：`tech/languages/rust.md` 与 `tech/languages/go.md` 结构对齐（语言内核 / 工程实践），可横向对照所有权 vs GC、trait vs 接口、`Result` vs `error`、async runtime vs GMP 调度；Go 页额外深挖 runtime。
 - **同类系统对比**：`codex-harness` 与 `deepseek-harness` 同为 agent harness。Codex 是 Rust 单体 + 统一协议，DeepSeek 是 TypeScript 全插件化 + 日志即 API，可从「控制循环 / steering / 工具审批」三条线横向比较。
+- **运行时 ↔ 技能**：`tech/skills/software-dev-skills.md` 讲「给 agent 装什么能力」，`codex-harness` / `deepseek-harness` 讲「运行时怎么跑」；skill 的自动触发（superpowers 的 SessionStart hook、ECC 的 PreToolUse hook）正是 harness hook 机制的上层应用。
 - **部署视角**：`tech/data-infra/fluss.md` §13 部署与运维 ↔ `tech/cloud-native/kubernetes.md` 第八章节点管理。
 
 ---
@@ -61,7 +68,7 @@
 
 - `tech/agent-harness/index.md`：两个 harness 的对比导读（loop / steer / 工具审批 / 多 agent），升格为领域 MOC 的触发条件是本领域超过 5 篇。
 - `tech/agent-harness/mcp.md`：MCP 协议与工具生态。
-- `tech/skills/claude-skills.md`：待 `raw/skills/` 资料入库后整理。
+- `tech/skills/claude-skills.md`：单个 skill 的写作规范深挖（mattpocock `writing-for-agents` / superpowers `writing-skills` / Anthropic 官方最佳实践对比），素材已在 `raw/skills/software-dev-skills/`。
 - `law/`、`finance/`：待原始资料入库后按 `AGENTS.md` §3 建目录。
 
 ---
