@@ -9,7 +9,7 @@
 
 | 大类 | 状态 | 说明 |
 |---|---|---|
-| [`tech/`](tech/) | ✅ 有内容 | 技术：语言与工程、Agent 运行时、Agent 技能、云原生、数据基础设施 |
+| [`tech/`](tech/) | ✅ 有内容 | 技术：语言与工程、Agent 运行时、Agent 技能、云原生、数据基础设施、网关 |
 | `law/` | 预留 | 法律：尚未录入 |
 | `finance/` | 预留 | 金融：尚未录入 |
 
@@ -52,6 +52,12 @@
 |---|---|---|---|
 | [fluss.md](tech/data-infra/fluss.md) | 面向实时分析与 AI 的流式存储，定位湖仓架构的实时数据层 | 数据模型 / Coordinator + TabletServer / Kafka 兼容 / 湖集成 / tiering | deep-dive |
 
+### 网关 · `tech/gateway/`
+
+| 页面 | 一句话 | 章节重点 | 类型 |
+|---|---|---|---|
+| [litellm.md](tech/gateway/litellm.md) | LiteLLM AI Gateway 源码级架构拆解：进程模型、路由与会话亲和、配额审计、可观测、Rust 双栈 | 启动入口 / master-worker / 请求链路 / 路由决策 / pin / 热更新 / 配额 / 脱敏 / 监控 / 评估 / Rust | deep-dive |
+
 ---
 
 ## 交叉主题
@@ -61,6 +67,8 @@
 - **同类系统对比**：`codex-harness` 与 `deepseek-harness` 同为 agent harness。Codex 是 Rust 单体 + 统一协议，DeepSeek 是 TypeScript 全插件化 + 日志即 API，可从「控制循环 / steering / 工具审批」三条线横向比较。
 - **运行时 ↔ 技能**：`tech/skills/software-dev-skills.md` 讲「给 agent 装什么能力」，`codex-harness` / `deepseek-harness` 讲「运行时怎么跑」；skill 的自动触发（superpowers 的 SessionStart hook、ECC 的 PreToolUse hook）正是 harness hook 机制的上层应用。
 - **部署视角**：`tech/data-infra/fluss.md` §13 部署与运维 ↔ `tech/cloud-native/kubernetes.md` 第八章节点管理。
+- **网关 ↔ 云原生**：`tech/gateway/litellm.md` §3.4 K8s 两级扩展 ↔ `tech/cloud-native/kubernetes.md` Service 与多副本调度，前者是后者上的应用层部署实例。
+- **调用方 ↔ 网关**：`tech/agent-harness/` 下的 harness 是 LLM 的直接调用方，`tech/gateway/litellm.md` 是集中式治理网关，可从"请求如何被鉴权、路由、计费"对照阅读。
 
 ---
 

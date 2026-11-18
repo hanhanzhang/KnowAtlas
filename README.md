@@ -38,7 +38,8 @@ KnowAtlas/
 │       ├── agent-harness/ #   领域：Agent 运行时
 │       ├── skills/        #   领域：Agent 技能
 │       ├── cloud-native/  #   领域：云原生
-│       └── data-infra/    #   领域：数据基础设施
+│       ├── data-infra/    #   领域：数据基础设施
+│       └── gateway/       #   领域：网关与流量治理
 └── .claude/
     └── skills/            # Agent 技能定义，每个技能一个 SKILL.md
 ```
